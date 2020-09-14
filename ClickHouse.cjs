@@ -36,21 +36,50 @@ const lineSep = "\n";
 
 class ClickHouse
 {
-   constructor(_opts)
+   /**
+    *
+    * @param {Object} opts
+    * @param {String} opts.host
+    * @param {Number} opts.port
+    * @param {boolean} opts.debug
+    */
+   constructor(opts)
    {
 
       this.opts = Object.assign(
          {
-            url: 'http://localhost',
+            host: 'http://localhost',
             port: 8123,
             debug: false
          },
-         _opts
+         opts
       );
 
       this._typeCast = new TypeCast();
-      this.insertMany = promisify(this._insertMany)
-      this.query = promisify(this._query)
+   }
+
+   async insertMany(tableName, values)
+   {
+      return new Promise((resolve, reject)=>
+      {
+         this._insertMany(tableName, values, (err,data) =>
+         {
+            if(err) return reject(err)
+            return resolve(data)
+         })
+      })
+   }
+
+   async query(opts)
+   {
+      return new Promise((resolve, reject)=>
+      {
+         this._query(opts, (err,data) =>
+         {
+            if(err) return reject(err)
+            return resolve(data)
+         })
+      })
    }
 
    _getHost()
@@ -137,9 +166,11 @@ class ClickHouse
 
    /**
     * Exec query
-    * @param {String} query
+    * @param {Object|String} _opts
+    * @param {String} _opts.query
+    * @param {Array} _opts.body
     * @param {Function} cb
-    * @returns {Stream|undefined}
+    * @returns {Stream|}
     */
    _query(_opts, cb)
    {
