@@ -84,7 +84,7 @@ class ClickHouse
 
    _getHost()
    {
-      return this.opts.url + ':' + this.opts.port;
+      return this.opts.host + ':' + this.opts.port;
    }
 
    /**
