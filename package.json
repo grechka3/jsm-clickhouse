@@ -1,6 +1,6 @@
 {
   "name": "jsm-clickhouse",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "",
   "main": "ClickHouse.cjs",
   "scripts": {
