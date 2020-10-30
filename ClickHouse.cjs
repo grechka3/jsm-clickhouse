@@ -13,8 +13,7 @@ class TypeCast
    constructor()
    {
       this.castMap = TypeList.reduce(
-         (obj, type) =>
-         {
+         (obj, type) => {
             obj[type] = value => parseInt(value, 10);
             return obj;
          },
@@ -41,7 +40,7 @@ class ClickHouse
     * @param {Object} opts
     * @param {String} opts.host
     * @param {Number} opts.port
-    * @param {boolean} opts.debug
+    * @param {boolean} [opts.debug=false]
     */
    constructor(opts)
    {
@@ -53,31 +52,27 @@ class ClickHouse
             debug: false
          },
          opts
-      );
+      )
 
-      this._typeCast = new TypeCast();
+      this._typeCast = new TypeCast()
    }
 
    async insertMany(tableName, values)
    {
-      return new Promise((resolve, reject)=>
-      {
-         this._insertMany(tableName, values, (err,data) =>
-         {
-            if(err) return reject(err)
-            return resolve(data)
+      return new Promise((resolve, reject) => {
+         this._insertMany(tableName, values, (err, data) => {
+            if (err) return resolve([err, null])
+            return resolve([null, data])
          })
       })
    }
 
    async query(opts)
    {
-      return new Promise((resolve, reject)=>
-      {
-         this._query(opts, (err,data) =>
-         {
-            if(err) return reject(err)
-            return resolve(data)
+      return new Promise((resolve, reject) => {
+         this._query(opts, (err, data) => {
+            if (err) return resolve([err, null])
+            return resolve([null, data])
          })
       })
    }
@@ -96,13 +91,11 @@ class ClickHouse
    {
       let params = {};
 
-      if (query)
-      {
+      if (query) {
          params['_query'] = query;
       }
 
-      if (Object.keys(params).length === 0)
-      {
+      if (Object.keys(params).length === 0) {
          return new Error('query is empty');
       }
 
@@ -123,8 +116,7 @@ class ClickHouse
          typeList = [];
 
 
-      if (!rows)
-      {
+      if (!rows) {
          return [];
       }
 
@@ -136,8 +128,7 @@ class ClickHouse
       rows = rows.slice(2, rows.length - 1);
 
       columnList = columnList.reduce(
-         function (arr, column, i)
-         {
+         function (arr, column, i) {
             arr.push({
                name: column,
                type: typeList[i]
@@ -148,13 +139,11 @@ class ClickHouse
          []
       );
 
-      return rows.map(function (row, i)
-      {
+      return rows.map(function (row, i) {
          let columns = row.split('\t');
 
          return columnList.reduce(
-            function (obj, column, i)
-            {
+            function (obj, column, i) {
                obj[column.name] = me._typeCast.cast(column.type, columns[i]);
                return obj;
             },
@@ -182,33 +171,27 @@ class ClickHouse
          };
 
 
-      if (!_opts)
-      {
-         return cb(new Error('first params should not empty'));
+      if (!_opts) {
+         return cb(new Error('first params should not be empty'));
       }
 
 
-      if (typeof _opts === 'string')
-      {
+      if (typeof _opts === 'string') {
          opts.query = _opts;
       }
-      else
-      {
+      else {
          opts = Object.assign(opts, _opts);
       }
 
 
       // 'INSERT INTO t VALUES' && [ [1, '123', '2015-10-11'], [2, '456', '2015-02-29'], ...]
-      if (opts.query && opts.body)
-      {
-         if (opts.query.match(/^insert/i))
-         {
+      if (opts.query && opts.body) {
+         if (opts.query.match(/^insert/i)) {
             opts.body = opts.body.map(i => i.join('\t')).join('\n');
 
             opts.query += ' FORMAT TabSeparated';
          }
-         else
-         {
+         else {
             opts.query += ' FORMAT TabSeparatedWithNamesAndTypes';
          }
 
@@ -216,10 +199,8 @@ class ClickHouse
       }
 
       // 'INSERT INTO t VALUES (1),(2),(3)' || 'SELECT date, count() FROM log WHERE siteId = '123'
-      else if (opts.query && !opts.body)
-      {
-         if (!opts.query.match(/^(insert|create|drop|alter|use)/i))
-         {
+      else if (opts.query && !opts.body) {
+         if (!opts.query.match(/^(insert|create|drop|alter|use)/i)) {
             opts.query += ' FORMAT TabSeparatedWithNamesAndTypes';
          }
 
@@ -236,19 +217,15 @@ class ClickHouse
          }
       };
 
-      if (cb)
-      {
+      if (cb) {
          return request.post(
             reqParams,
-            function (error, response, body)
-            {
-               if (error)
-               {
+            function (error, response, body) {
+               if (error) {
                   return cb(error);
                }
 
-               if (response.statusCode === 200 && response.statusMessage === 'OK')
-               {
+               if (response.statusCode === 200 && response.statusMessage === 'OK') {
                   return cb(null, me._parseData(body));
                }
 
@@ -257,13 +234,10 @@ class ClickHouse
             }
          );
       }
-      else
-      {
+      else {
          let rs = new stream.Readable();
-         rs.read = function (chunk)
-         {
-            if (me.opts.debug)
-            {
+         rs.read = function (chunk) {
+            if (me.opts.debug) {
                console.log('rs _read chunk', chunk);
             }
          };
@@ -275,28 +249,23 @@ class ClickHouse
          let str = '';
 
          queryStream
-            .on('response', function (response)
-            {
+            .on('response', function (response) {
                responseStatus = response.statusCode;
             })
-            .on('error', function (err)
-            {
+            .on('error', function (err) {
                rs.emit('error', err);
             })
-            .on('data', function (data)
-            {
+            .on('data', function (data) {
                str = str + data.toString('utf8');
 
 
-               if (responseStatus !== 200)
-               {
+               if (responseStatus !== 200) {
                   return rs.emit('error', str);
                }
 
 
                let lineSepIndex = str.lastIndexOf(lineSep);
-               if (lineSepIndex === -1)
-               {
+               if (lineSepIndex === -1) {
                   return true;
                }
 
@@ -305,8 +274,7 @@ class ClickHouse
                str = str.substr(lineSepIndex + 1);
 
 
-               if (!queryStream.columnList)
-               {
+               if (!queryStream.columnList) {
                   let columnList = rows[0].split('\t');
                   let typeList = rows[1].split('\t');
 
@@ -315,8 +283,7 @@ class ClickHouse
                   rows = rows.slice(2, rows.length);
 
                   queryStream.columnList = columnList.reduce(
-                     function (arr, column, i)
-                     {
+                     function (arr, column, i) {
                         arr.push({
                            name: column,
                            type: typeList[i]
@@ -327,27 +294,23 @@ class ClickHouse
                      []
                   );
 
-                  if (me.opts.debug)
-                  {
+                  if (me.opts.debug) {
                      console.log('columns', queryStream.columnList);
                   }
                }
 
 
-               if (me.opts.debug)
-               {
+               if (me.opts.debug) {
                   console.log('raw data', data.toString('utf8'));
                }
 
 
-               for (let i = 0; i < rows.length; i++)
-               {
+               for (let i = 0; i < rows.length; i++) {
                   let columns = rows[i].split('\t');
                   rs.emit(
                      'data',
                      queryStream.columnList.reduce(
-                        (o, c, i) =>
-                        {
+                        (o, c, i) => {
                            o[c.name] = me._typeCast.cast(c.type, columns[i]);
                            return o;
                         },
@@ -356,8 +319,7 @@ class ClickHouse
                   );
                }
             })
-            .on('end', function ()
-            {
+            .on('end', function () {
                rs.emit('end');
             });
 
@@ -377,10 +339,8 @@ class ClickHouse
    {
       let url = `INSERT INTO ${tableName} FORMAT TabSeparated`;
 
-      let post = values.map(function (row)
-      {
-         return row.map(function (column)
-         {
+      let post = values.map(function (row) {
+         return row.map(function (column) {
             return (typeof column === 'undefined' || column === null) ? '\\N' : jsesc(column);
          }).join('\t');
       }).join('\n')
@@ -394,19 +354,14 @@ class ClickHouse
                'Content-Type': 'text/plain'
             }
          },
-         function (error, response, body)
-         {
-            if (!error && response.statusCode === 200)
-            {
-               if (cb)
-               {
+         function (error, response, body) {
+            if (!error && response.statusCode === 200) {
+               if (cb) {
                   cb(null, body);
                }
             }
-            else
-            {
-               if (cb)
-               {
+            else {
+               if (cb) {
                   return cb(error || body);
                }
             }
